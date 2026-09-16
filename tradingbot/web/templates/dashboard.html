@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TradingBot · Paper</title>
+<style>
+  :root {
+    --bg: #0b0f14; --panel: #121821; --panel2: #182029; --line: #22303c;
+    --fg: #e6edf3; --dim: #8b98a5; --green: #3fb950; --red: #f85149;
+    --amber: #d29922; --blue: #58a6ff; --violet: #bc8cff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 14px 22px; border-bottom: 1px solid var(--line); background: var(--panel);
+    position: sticky; top: 0; z-index: 5;
+  }
+  header h1 { font-size: 16px; margin: 0; letter-spacing: .3px; }
+  .pill {
+    font-size: 11px; font-weight: 700; letter-spacing: .8px; padding: 3px 9px;
+    border-radius: 999px; text-transform: uppercase;
+  }
+  .pill.paper { background: #1c3a5e; color: var(--blue); border: 1px solid #2b5a8f; }
+  .pill.live { background: #4d1f24; color: var(--red); border: 1px solid #8f2b33; }
+  .muted { color: var(--dim); font-size: 12px; }
+  main { padding: 20px 22px 60px; max-width: 1500px; margin: 0 auto; }
+  .grid { display: grid; gap: 14px; }
+  .kpis { grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); margin-bottom: 16px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .kpi .label { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .8px; }
+  .kpi .value { font-size: 24px; font-weight: 650; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .kpi .sub { color: var(--dim); font-size: 12px; margin-top: 2px; }
+  .pos { color: var(--green); } .neg { color: var(--red); } .warn { color: var(--amber); }
+  section { margin-top: 20px; }
+  section > h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--dim); margin: 0 0 10px; font-weight: 650;
+  }
+  .two { grid-template-columns: 1.35fr 1fr; }
+  @media (max-width: 1000px) { .two { grid-template-columns: 1fr; } }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .7px; font-weight: 600; }
+  tbody tr:hover { background: var(--panel2); }
+  .num { text-align: right; }
+  .tag {
+    display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px;
+    border-radius: 4px; letter-spacing: .5px; text-transform: uppercase;
+  }
+  .tag.long { background: #10301a; color: var(--green); }
+  .tag.short { background: #3a1416; color: var(--red); }
+  .tag.flat { background: #2a2f36; color: var(--dim); }
+  .tag.veto { background: #3a2a10; color: var(--amber); }
+  .decision { border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+  .decision > summary {
+    cursor: pointer; padding: 10px 12px; display: flex; gap: 10px; align-items: center;
+    background: var(--panel2); list-style: none; flex-wrap: wrap;
+  }
+  .decision > summary::-webkit-details-marker { display: none; }
+  .decision[open] > summary { border-bottom: 1px solid var(--line); }
+  .sym { font-weight: 650; letter-spacing: .3px; }
+  .votes { padding: 10px 12px; display: grid; gap: 5px; }
+  .vote { display: grid; grid-template-columns: 128px 1fr 92px; gap: 9px; align-items: center; font-size: 12px; }
+  .vote .bar { height: 7px; background: #1d2731; border-radius: 4px; overflow: hidden; position: relative; }
+  .vote .bar i { position: absolute; top: 0; bottom: 0; left: 50%; display: block; }
+  .vote .bar i.p { background: var(--green); } .vote .bar i.n { background: var(--red); left: auto; right: 50%; }
+  .reason { padding: 0 12px 10px; color: var(--dim); font-size: 12px; }
+  .rej { color: var(--amber); font-size: 12px; }
+  svg { display: block; width: 100%; height: 150px; }
+  .empty { color: var(--dim); padding: 18px; text-align: center; font-size: 13px; }
+  code { background: var(--panel2); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  .cal td:nth-child(3), .cal td:nth-child(4) { text-align: right; }
+  .barcell { position: relative; height: 8px; background: #1d2731; border-radius: 4px; }
+  .barcell i { position: absolute; inset: 0 auto 0 0; background: var(--violet); border-radius: 4px; }
+  .barcell b { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--fg); }
+</style>
+</head>
+<body>
+<header>
+  <h1>TradingBot</h1>
+  <span class="pill paper" id="mode-pill">Paper</span>
+  <span class="muted" id="run-info">loading…</span>
+  <span class="muted" style="margin-left:auto" id="stamp"></span>
+</header>
+
+<main>
+  <div class="grid kpis" id="kpis"></div>
+
+  <section>
+    <h2>Equity curve</h2>
+    <div class="card"><svg id="curve" viewBox="0 0 800 150" preserveAspectRatio="none"></svg></div>
+  </section>
+
+  <div class="grid two" style="margin-top:20px">
+    <section>
+      <h2>Decisions &amp; reasoning</h2>
+      <div id="decisions"></div>
+    </section>
+    <section>
+      <h2>Open positions</h2>
+      <div class="card" style="padding:0"><table id="positions">
+        <thead><tr><th>Symbol</th><th>Sector</th><th class="num">Qty</th>
+        <th class="num">Avg</th><th class="num">LTP</th><th class="num">P&amp;L</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+
+      <h2 style="margin-top:20px">Calibration — did confidence mean anything?</h2>
+      <div class="card" style="padding:0"><table class="cal" id="calibration">
+        <thead><tr><th>Claimed</th><th class="num">n</th><th class="num">Mean conf</th>
+        <th class="num">Actual win</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="muted" id="cal-note" style="margin-top:8px"></div>
+
+      <h2 style="margin-top:20px">Alerts</h2>
+      <div class="card" style="padding:0"><table id="alerts">
+        <thead><tr><th>Time</th><th>Kind</th><th>Status</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+  </div>
+
+  <section>
+    <h2>Ideas considered and declined</h2>
+    <div class="card" style="padding:0"><table id="rejections">
+      <thead><tr><th>Session</th><th>Symbol</th><th>Sector</th><th class="num">Score</th>
+      <th class="num">Conf</th><th class="num">For/Against</th><th>Rejected because</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+</main>
+
+<script>
+const INR = n => '\u20B9' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits: 2});
+const pct = n => (100 * (n || 0)).toFixed(2) + '%';
+const cls = n => n > 0 ? 'pos' : n < 0 ? 'neg' : 'muted';
+
+function kpi(label, value, sub, klass) {
+  return `<div class="card kpi"><div class="label">${label}</div>
+    <div class="value ${klass || ''}">${value}</div>
+    ${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
+}
+
+function drawCurve(curve) {
+  const svg = document.getElementById('curve');
+  if (!curve || curve.length < 2) { svg.innerHTML = ''; return; }
+  const vals = curve.map(r => r.total);
+  const min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
+  const pts = vals.map((v, i) =>
+    `${(800 * i / (vals.length - 1)).toFixed(1)},${(145 - 140 * (v - min) / span).toFixed(1)}`);
+  const first = vals[0];
+  const colour = vals[vals.length - 1] >= first ? 'var(--green)' : 'var(--red)';
+  const baseY = 145 - 140 * (first - min) / span;
+  svg.innerHTML =
+    `<line x1="0" y1="${baseY}" x2="800" y2="${baseY}" stroke="var(--line)" stroke-dasharray="3 3"/>
+     <polyline fill="none" stroke="${colour}" stroke-width="1.6" points="${pts.join(' ')}"/>`;
+}
+
+function voteRow(agent, score, conf) {
+  const w = Math.min(Math.abs(score) * 50, 50);
+  const side = score >= 0 ? 'p' : 'n';
+  return `<div class="vote"><span class="muted">${agent}</span>
+    <span class="bar"><i class="${side}" style="width:${w}%"></i></span>
+    <span class="num">${score >= 0 ? '+' : ''}${score.toFixed(2)} @ ${(conf * 100).toFixed(0)}%</span></div>`;
+}
+
+function renderDecisions(rows) {
+  const el = document.getElementById('decisions');
+  if (!rows.length) { el.innerHTML = '<div class="card empty">No decisions yet.</div>'; return; }
+  el.innerHTML = rows.map(d => {
+    const votes = Object.entries(d.votes || {})
+      .sort((a, b) => Math.abs(b[1][0] * b[1][1]) - Math.abs(a[1][0] * a[1][1]))
+      .map(([a, v]) => voteRow(a, v[0], v[1])).join('');
+    const tag = d.vetoed ? '<span class="tag veto">veto</span>'
+      : `<span class="tag ${d.direction}">${d.direction}</span>`;
+    const head = `<summary>
+      <span class="sym">${d.symbol}</span>${tag}
+      <span class="muted">${d.sector}</span>
+      <span class="num">score ${d.score >= 0 ? '+' : ''}${(+d.score).toFixed(2)}</span>
+      <span class="num">conf ${(100 * d.confidence).toFixed(0)}%</span>
+      <span class="num muted">${d.agreeing} for / ${d.dissenting} against</span>
+      <span class="num muted">agree ${(100 * d.agreement).toFixed(0)}%</span>
+    </summary>`;
+    const body = `<div class="votes">${votes || '<div class="muted">no votes recorded</div>'}</div>
+      <div class="reason">
+        ${d.actionable ? 'Actionable.' : `<span class="rej">Not actionable — ${d.rejection || 'unknown reason'}</span>`}
+        ${d.action ? ` <span class="muted">· ${d.action}${d.quantity ? ' ' + d.quantity + ' sh' : ''}</span>` : ''}
+        ${d.reason ? `<div class="muted" style="margin-top:4px">${d.reason}</div>` : ''}
+        <div class="muted" style="margin-top:4px">${d.session_date || ''} · decision #${d.id}</div>
+      </div>`;
+    return `<details class="decision">${head}${body}</details>`;
+  }).join('');
+}
+
+async function j(url) { const r = await fetch(url); return r.ok ? r.json() : null; }
+
+async function refresh() {
+  const [state, decisions, rejections, alerts] = await Promise.all([
+    j('/api/state'), j('/api/decisions?limit=60'),
+    j('/api/rejections?limit=60'), j('/api/alerts?limit=12'),
+  ]);
+  if (!state) return;
+
+  const eq = state.equity || {};
+  const stats = state.stats || {};
+  document.getElementById('run-info').textContent =
+    `${state.meta.mode || 'paper'} · ${state.meta.universe || ''} · ${state.db_path}`;
+  document.getElementById('stamp').textContent =
+    `updated ${new Date().toLocaleTimeString()} · ${state.n_decisions} decisions · ${state.n_signals} signals`;
+
+  document.getElementById('kpis').innerHTML = [
+    kpi('Equity', INR(eq.total), `peak DD ${pct(eq.drawdown)}`, cls(eq.drawdown)),
+    kpi('Cash', INR(eq.cash), `invested ${INR(eq.invested)}`),
+    kpi('Exposure', pct(eq.exposure), `${state.positions.length} open`),
+    kpi('Realised P&L', INR(stats.realised_pnl), `${stats.n_trades || 0} closed`, cls(stats.realised_pnl)),
+    kpi('Win rate', stats.n_trades ? pct(stats.win_rate) : '—', `PF ${(stats.profit_factor || 0).toFixed(2)}`),
+    kpi('Charges paid', INR(stats.total_charges), 'net of costs'),
+    kpi('Brier score', state.brier_score === null ? '—' : state.brier_score.toFixed(3),
+        '0.25 = coin flip', state.brier_score !== null && state.brier_score > 0.25 ? 'neg' : ''),
+  ].join('');
+
+  drawCurve(state.curve);
+  renderDecisions(decisions || []);
+
+  document.querySelector('#positions tbody').innerHTML = state.positions.length
+    ? state.positions.map(p => `<tr><td class="sym">${p.symbol}</td><td class="muted">${p.sector}</td>
+        <td class="num">${p.quantity}</td><td class="num">${(+p.avg_price).toFixed(2)}</td>
+        <td class="num">${(+p.ltp).toFixed(2)}</td>
+        <td class="num ${cls(p.pnl)}">${(+p.pnl).toFixed(0)}</td></tr>`).join('')
+    : '<tr><td colspan="6" class="empty">Flat.</td></tr>';
+
+  document.querySelector('#calibration tbody').innerHTML = state.calibration.length
+    ? state.calibration.map(c => `<tr><td>${c.bucket}</td><td class="num">${c.n}</td>
+        <td class="num">${(100 * c.mean_confidence).toFixed(0)}%</td>
+        <td class="num">${(100 * c.realised_win_rate).toFixed(0)}%</td></tr>`).join('')
+    : '<tr><td colspan="4" class="empty">No settled predictions yet.</td></tr>';
+  document.getElementById('cal-note').innerHTML = state.calibration.length
+    ? 'If the last column tracks the third, the confidence number means something. If it does not, the sizing built on it is decorative.'
+    : 'Predictions settle as positions close. Until then the confidence number is a claim, not a measurement.';
+
+  document.querySelector('#alerts tbody').innerHTML = alerts && alerts.length
+    ? alerts.map(a => `<tr><td class="muted">${(a.ts || '').slice(11, 19)}</td>
+        <td>${a.kind}${a.symbol ? ' · ' + a.symbol : ''}</td>
+        <td class="${a.delivered ? 'pos' : 'warn'}">${a.delivered ? 'sent' : (a.error || 'queued')}</td></tr>`).join('')
+    : '<tr><td colspan="3" class="empty">No alerts.</td></tr>';
+
+  document.querySelector('#rejections tbody').innerHTML = rejections && rejections.length
+    ? rejections.map(r => `<tr><td class="muted">${r.session_date || ''}</td>
+        <td class="sym">${r.symbol}</td><td class="muted">${r.sector}</td>
+        <td class="num">${(+r.score).toFixed(2)}</td><td class="num">${(100 * r.confidence).toFixed(0)}%</td>
+        <td class="num">${r.agreeing}/${r.dissenting}</td>
+        <td class="rej">${r.vetoed ? 'VETO: ' : ''}${r.rejection || ''}</td></tr>`).join('')
+    : '<tr><td colspan="7" class="empty">Nothing rejected yet.</td></tr>';
+}
+
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

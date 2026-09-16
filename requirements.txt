@@ -1,0 +1,5 @@
+numpy>=1.26
+pandas>=2.1
+pytest>=7.4
+# Only needed to talk to a real broker / live data endpoint:
+# requests>=2.31

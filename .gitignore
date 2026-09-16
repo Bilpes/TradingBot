@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+/build/
+/dist/
+.pytest_cache/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Runtime state and user-supplied input.
+#
+# These patterns are ANCHORED with a leading slash on purpose. An unanchored
+# `data/` matches at any depth and silently swallowed the entire
+# tradingbot/data/ source package, so the pushed repository could not even be
+# imported. tests/test_repo_hygiene.py exists to catch that class of mistake.
+/data/
+/runs/
+/config/security_map.json
+*.csv
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+profiles.json

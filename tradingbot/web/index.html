@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlphaDesk · Multi-Agent Trading Desk</title>
+<style>
+:root{
+  --bg:#0a0e14;--panel:#10151d;--panel2:#0d1219;--border:#1c2531;
+  --txt:#d7e0ea;--dim:#7b8ba0;--faint:#4a5a70;
+  --up:#2dd4a7;--dn:#f2545b;--amber:#f0b429;--acc:#3ba3ff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font:13px/1.45 "Segoe UI",system-ui,sans-serif;
+  min-height:100vh}
+.mono{font-family:"JetBrains Mono","Fira Code",Consolas,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1440px;margin:0 auto;padding:14px 18px 40px}
+
+/* ---------- header ---------- */
+header{display:flex;flex-wrap:wrap;gap:14px;align-items:center;
+  border:1px solid var(--border);background:linear-gradient(180deg,#111826,#0c1118);
+  border-radius:10px;padding:14px 18px;margin-bottom:14px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand h1{font-size:19px;letter-spacing:.5px}
+.brand h1 span{color:var(--acc)}
+.brand small{color:var(--faint);letter-spacing:1.5px;text-transform:uppercase;font-size:10px}
+.pill{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.5px}
+.pill.paper{background:#17322a;color:var(--up);border:1px solid #1f4d40}
+.pill.live{background:#3a1a1e;color:var(--dn);border:1px solid #5e2a30}
+.pill.open{background:#17322a;color:var(--up)}
+.pill.closed{background:#2a2a33;color:var(--dim)}
+.pill.feed{background:#1b2331;color:var(--acc);border:1px solid #24425f}
+.clock{margin-left:auto;text-align:right}
+.clock .t{font-size:16px}
+.clock .d{font-size:11px;color:var(--faint)}
+
+/* ---------- KPI strip ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.kpi .lbl{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+.kpi .val{font-size:19px;font-weight:600}
+.kpi .sub{font-size:11px;color:var(--dim);margin-top:3px}
+.up{color:var(--up)}.dn{color:var(--dn)}.amber{color:var(--amber)}
+
+/* ---------- layout grid ---------- */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--dim);
+  margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.card h2 .badge{font-size:10px;background:#1b2331;color:var(--acc);padding:2px 8px;border-radius:10px}
+.full{grid-column:1 / -1}
+
+/* ---------- tables ---------- */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{color:var(--faint);font-weight:500;text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);
+  font-size:10.5px;text-transform:uppercase;letter-spacing:.8px}
+td{padding:7px 8px;border-bottom:1px solid #131a24}
+tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right;font-family:"JetBrains Mono",Consolas,monospace}
+.scroll{max-height:280px;overflow-y:auto}
+.scroll::-webkit-scrollbar{width:8px}
+.scroll::-webkit-scrollbar-thumb{background:#22304a;border-radius:4px}
+.scroll::-webkit-scrollbar-track{background:transparent}
+
+/* ---------- agents ---------- */
+.agents{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.agent{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.agent .head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.agent .name{font-weight:600;font-size:12.5px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+.dot.ok{background:var(--up)}.dot.err{background:var(--dn)}.dot.skip{background:var(--amber)}
+.agent .score{margin-left:auto;font-family:Consolas,monospace;font-weight:700}
+.agent .note{font-size:10.5px;color:var(--dim);min-height:28px}
+.agent .ms{font-size:9.5px;color:var(--faint);margin-top:4px}
+
+/* ---------- watchlist ---------- */
+.wl-form{display:flex;gap:8px;margin-bottom:10px}
+input{background:#0a0f16;border:1px solid var(--border);color:var(--txt);border-radius:6px;
+  padding:8px 10px;font-size:13px;flex:1;outline:none}
+input:focus{border-color:var(--acc)}
+button{background:#16283e;color:var(--acc);border:1px solid #24425f;border-radius:6px;
+  padding:8px 14px;font-size:12.5px;cursor:pointer;font-weight:600}
+button:hover{background:#1c3350}
+button.danger{background:#2d1418;color:var(--dn);border-color:#5e2a30}
+button.danger:hover{background:#3d1a20}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:#131b26;border:1px solid var(--border);border-radius:14px;padding:4px 6px 4px 12px;
+  font-size:12px;display:flex;align-items:center;gap:6px}
+.chip .x{color:var(--faint);cursor:pointer;font-weight:700;padding:0 4px}
+.chip .x:hover{color:var(--dn)}
+
+/* ---------- signals ---------- */
+.signal{background:var(--panel2);border-left:3px solid var(--acc);border-radius:6px;
+  padding:9px 12px;margin-bottom:8px;font-size:12px}
+.signal.buy{border-left-color:var(--up)}
+.signal.sell{border-left-color:var(--dn)}
+.signal .top{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.signal .sym{font-weight:700;font-size:13px}
+.signal .tag{font-size:10px;background:#1b2331;color:var(--acc);border-radius:8px;padding:1px 7px}
+.signal .why{color:var(--dim);font-size:11px;margin-top:4px}
+.signal .rej{color:var(--amber);font-size:11px}
+
+/* ---------- equity chart ---------- */
+canvas{width:100%;height:120px;display:block}
+
+/* ---------- controls ---------- */
+.ctrl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ctrl .status{margin-left:auto;font-size:11px;color:var(--faint)}
+footer{margin-top:18px;color:var(--faint);font-size:10.5px;text-align:center}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.clock{margin-left:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <h1>ALPHA<span>DESK</span></h1>
+      <small>Multi-agent Indian equity desk</small>
+      <span class="pill paper" id="mode-pill">PAPER</span>
+      <span class="pill feed" id="feed-pill">feed</span>
+    </div>
+    <div class="clock">
+      <div class="t mono" id="clock">--:--:--</div>
+      <div class="d"><span class="pill closed" id="mkt-pill">CLOSED</span> NSE · IST</div>
+    </div>
+  </header>
+
+  <div class="kpis">
+    <div class="kpi"><div class="lbl">Equity</div><div class="val mono" id="k-eq">—</div>
+      <div class="sub" id="k-eq-sub">capital ₹—</div></div>
+    <div class="kpi"><div class="lbl">Day P&L</div><div class="val mono" id="k-day">—</div>
+      <div class="sub" id="k-day-sub">realised + MTM</div></div>
+    <div class="kpi"><div class="lbl">Total P&L</div><div class="val mono" id="k-total">—</div>
+      <div class="sub" id="k-total-sub">lifetime, net of charges</div></div>
+    <div class="kpi"><div class="lbl">Unrealised</div><div class="val mono" id="k-mtm">—</div>
+      <div class="sub" id="k-mtm-sub">open positions</div></div>
+    <div class="kpi"><div class="lbl">Exposure</div><div class="val mono" id="k-exp">—</div>
+      <div class="sub" id="k-exp-sub">heat —%</div></div>
+    <div class="kpi"><div class="lbl">Win rate</div><div class="val mono" id="k-win">—</div>
+      <div class="sub" id="k-win-sub">trades —</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card full">
+      <h2>Agent Brain <span class="badge" id="ml-badge">cold-start</span></h2>
+      <div class="agents" id="agents"></div>
+    </div>
+
+    <div class="card">
+      <h2>Open Positions</h2>
+      <div class="scroll"><table id="pos-table">
+        <thead><tr><th>Symbol</th><th>Side</th><th>Style</th><th class="num">Qty</th>
+          <th class="num">Avg</th><th class="num">LTP</th><th class="num">SL</th>
+          <th class="num">T1</th><th class="num">P&L ₹</th></tr></thead>
+        <tbody id="pos-body"><tr><td colspan="9" style="color:var(--faint)">no open positions</td></tr></tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <h2>Watchlist <span class="badge" id="wl-count">0</span></h2>
+      <div class="wl-form">
+        <input id="wl-input" placeholder="Add NSE symbol e.g. TCS, RELIANCE…" maxlength="16">
+        <button onclick="addSymbol()">Add</button>
+      </div>
+      <div class="chips" id="wl-chips"></div>
+      <p style="color:var(--faint);font-size:11px;margin-top:10px">
+        Universe: Nifty 50 (config/nifty50.json). Added names are scanned every cycle by all nine agents.</p>
+    </div>
+
+    <div class="card full">
+      <h2>Signals — fused agent decisions</h2>
+      <div id="signals" class="scroll" style="max-height:300px">
+        <div style="color:var(--faint)">no signals yet — the desk is warming up…</div>
+      </div>
+    </div>
+
+    <div class="card full">
+      <h2>Equity curve</h2>
+      <canvas id="eq-chart" width="1400" height="120"></canvas>
+    </div>
+
+    <div class="card full">
+      <h2>Trade log</h2>
+      <div class="scroll"><table>
+        <thead><tr><th>Symbol</th><th>Side</th><th>Style</th><th class="num">Qty</th>
+          <th class="num">Entry</th><th class="num">Exit</th><th>Exit reason</th>
+          <th class="num">Net ₹</th></tr></thead>
+        <tbody id="trades-body"><tr><td colspan="8" style="color:var(--faint)">no closed trades yet</td></tr></tbody>
+      </table></div>
+    </div>
+
+    <div class="card full">
+      <h2>Desk controls</h2>
+      <div class="ctrl">
+        <button onclick="scanNow()">Scan now</button>
+        <button class="danger" onclick="squareOff()">Force square-off (all)</button>
+        <button class="danger" id="halt-btn" onclick="toggleHalt()">Halt</button>
+        <span class="status" id="ctl-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    AlphaDesk v1.0 · paper-first multi-agent engine for NSE equities · data feeds: Dhan API v2 / yfinance / offline sim<br>
+    Educational software. Trading equities involves risk of loss. Verify every recommendation with your broker &amp; SEBI registration norms before going live.
+  </footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=x=>(x==null||isNaN(x))?"—":Number(x).toLocaleString("en-IN",{maximumFractionDigits:2});
+const fmtSign=x=>(x>=0?"+₹":"−₹")+fmt(Math.abs(x));
+const cls=x=>x>=0?"up":"dn";
+
+async function api(path,opts){
+  const r=await fetch(path,opts);
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+function renderKpis(s){
+  const p=s.portfolio;
+  $("k-eq").textContent="₹"+fmt(p.equity);
+  $("k-eq-sub").textContent=`capital ₹${fmt(p.capital)} · ${p.total_pnl_pct>=0?"+":""}${p.total_pnl_pct}%`;
+  $("k-day").textContent=fmtSign(p.day_pnl);
+  $("k-day").className="val mono "+cls(p.day_pnl);
+  $("k-day-sub").textContent=`realised ${fmtSign(p.realized_day)}`;
+  $("k-total").textContent=fmtSign(p.total_pnl);
+  $("k-total").className="val mono "+cls(p.total_pnl);
+  $("k-total-sub").textContent=`net of charges`;
+  $("k-mtm").textContent=fmtSign(p.unrealized);
+  $("k-mtm").className="val mono "+cls(p.unrealized);
+  $("k-mtm-sub").textContent=`realised total ${fmtSign(p.realized_total)}`;
+  $("k-exp").textContent=p.exposure_pct+"%";
+  $("k-exp-sub").textContent=`heat ${p.heat_pct}% · ${p.open_positions}/${p.max_positions} pos`;
+  const st=s.stats||{};
+  $("k-win").textContent=(st.win_rate??"0")+"%";
+  $("k-win-sub").textContent=`trades ${st.trades??0} · PF ${st.profit_factor??"—"}`;
+  $("mode-pill").textContent=s.mode;
+  $("mode-pill").className="pill "+(s.mode.includes("LIVE")?"live":"paper");
+  $("feed-pill").textContent="feed: "+s.data_feed;
+  $("mkt-pill").textContent=s.market.status.toUpperCase().includes("OPEN")?"LIVE":"CLOSED";
+  $("mkt-pill").className="pill "+(s.market.status.toUpperCase().includes("OPEN")?"open":"closed");
+  $("clock").textContent=s.market.ist_time;
+}
+
+function renderAgents(s){
+  const rows=(s.agent_summary||[]);
+  const ml=s.ml&&s.ml.swing?s.ml.swing.mode:"coldstart";
+  $("ml-badge").textContent="ML: "+ml+(s.ml&&s.ml.swing&&s.ml.swing.val_auc?` · AUC ${s.ml.swing.val_auc}`:"");
+  $("agents").innerHTML=rows.map(a=>{
+    const dot=a.status==="OK"?"ok":(a.status==="ERROR"?"err":"skip");
+    const sc=a.score;
+    return `<div class="agent"><div class="head"><span class="dot ${dot}"></span>
+      <span class="name">${a.agent}</span>
+      <span class="score ${cls(sc)}">${sc>0?"+":""}${sc.toFixed(0)}</span></div>
+      <div class="note">${a.note||"—"}</div>
+      <div class="ms">${a.symbols} symbol(s) · ${a.elapsed_ms}ms · ${a.status}</div></div>`;
+  }).join("")||'<div style="color:var(--faint)">agents idle — wait for first scan cycle…</div>';
+}
+
+function renderPositions(s){
+  const rows=s.positions||[];
+  if(!rows.length){$("pos-body").innerHTML='<tr><td colspan="9" style="color:var(--faint)">no open positions</td></tr>';return}
+  $("pos-body").innerHTML=rows.map(p=>`
+    <tr><td><b>${p.symbol}</b><br><small style="color:var(--faint)">${p.setup}</small></td>
+    <td class="${p.side==="BUY"?"up":"dn"}">${p.side==="BUY"?"LONG":"SHORT"}</td>
+    <td>${p.style}</td>
+    <td class="num">${p.qty}</td>
+    <td class="num">${fmt(p.entry_price)}</td>
+    <td class="num">${fmt(p.ltp)}</td>
+    <td class="num amber">${fmt(p.stop)}</td>
+    <td class="num">${fmt(p.target1)}</td>
+    <td class="num ${cls(p.total_pnl)}">${fmtSign(p.total_pnl)}</td></tr>`).join("");
+}
+
+function renderWatchlist(s){
+  const wl=s.watchlist||[];
+  $("wl-count").textContent=wl.length+" / "+s.universe_size;
+  $("wl-chips").innerHTML=wl.map(x=>
+    `<span class="chip">${x}<span class="x" onclick="delSymbol('${x}')">✕</span></span>`).join("")
+    ||'<span style="color:var(--faint)">none</span>';
+}
+
+function renderSignals(s){
+  const sig=s.signals||[];
+  if(!sig.length){$("signals").innerHTML='<div style="color:var(--faint)">no signals yet — the desk is warming up…</div>';return}
+  $("signals").innerHTML=sig.slice(0,20).map(g=>{
+    const c=g.side==="BUY"?"buy":"sell";
+    const tag=g.status==="TAKEN"?`<span class="tag">TAKEN ${g.qty}sh</span>`:
+      g.status==="REJECTED"?`<span class="tag" style="color:var(--amber)">REJECTED</span>`:
+      g.status==="PROPOSED"?`<span class="tag">evaluated</span>`:"";
+    const rej=g.reject_reason?`<div class="rej">✕ ${g.reject_reason}</div>`:"";
+    return `<div class="signal ${c}">
+      <div class="top"><span class="sym">${g.symbol}</span>
+      <span class="${c}">${g.side} · ${g.style}</span>${tag}
+      <span style="color:var(--dim)">${g.setup} @ ₹${fmt(g.entry)} · SL ₹${fmt(g.stop)} · T ₹${fmt(g.target1)}/${fmt(g.target2)}</span>
+      <span style="color:var(--faint)">P(up) ${g.ml_prob} · score ${g.score}</span></div>
+      <div class="why">${(g.rationale||[]).join(" · ")}</div>${rej}
+      <div style="color:var(--faint);font-size:10px;margin-top:3px">${g.created_at}</div></div>`;
+  }).join("");
+}
+
+function renderTrades(s){
+  const t=s.trades||[];
+  if(!t.length){$("trades-body").innerHTML='<tr><td colspan="8" style="color:var(--faint)">no closed trades yet</td></tr>';return}
+  $("trades-body").innerHTML=t.map(x=>`
+    <tr><td><b>${x.symbol}</b></td>
+    <td class="${x.side==="BUY"?"up":"dn"}">${x.side==="BUY"?"LONG":"SHORT"}</td>
+    <td>${x.style}</td>
+    <td class="num">${x.qty}</td>
+    <td class="num">${fmt(x.entry_price)}</td>
+    <td class="num">${fmt(x.exit_price)}</td>
+    <td>${x.exit_reason}</td>
+    <td class="num ${cls(x.net_pnl)}">${fmtSign(x.net_pnl)}</td></tr>`).join("");
+}
+
+function renderEquity(s){
+  const pts=(s.equity_curve||[]).map(e=>e.equity);
+  const c=$("eq-chart"),ctx=c.getContext("2d");
+  const W=c.width=c.clientWidth*2, H=c.height=240;
+  ctx.scale(1,1);
+  ctx.clearRect(0,0,W,H);
+  if(pts.length<2){ctx.fillStyle="#4a5a70";ctx.font="24px sans-serif";
+    ctx.fillText("equity curve builds as the bot trades…",40,H/2);return}
+  const min=Math.min(...pts)*0.998,max=Math.max(...pts)*1.002;
+  const X=i=>40+(W-80)*i/(pts.length-1), Y=v=>H-20-(H-40)*(v-min)/(max-min||1);
+  ctx.strokeStyle="#1c2531";ctx.lineWidth=1;
+  for(let g=0;g<=3;g++){const y=20+(H-40)*g/3;ctx.beginPath();ctx.moveTo(40,y);ctx.lineTo(W-40,y);ctx.stroke()}
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  const upAll=pts[pts.length-1]>=pts[0];
+  grad.addColorStop(0,upAll?"rgba(45,212,167,.25)":"rgba(242,84,91,.25)");
+  grad.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.beginPath();ctx.moveTo(X(0),Y(pts[0]));
+  pts.forEach((v,i)=>ctx.lineTo(X(i),Y(v)));
+  ctx.strokeStyle=upAll?"#2dd4a7":"#f2545b";ctx.lineWidth=3;ctx.stroke();
+  ctx.lineTo(X(pts.length-1),H-20);ctx.lineTo(X(0),H-20);ctx.closePath();
+  ctx.fillStyle=grad;ctx.fill();
+  ctx.fillStyle="#7b8ba0";ctx.font="20px monospace";
+  ctx.fillText("₹"+fmt(pts[pts.length-1]),W-220,28);
+}
+
+async function refresh(){
+  try{
+    const s=await api("/api/state");
+    renderKpis(s);renderAgents(s);renderPositions(s);renderWatchlist(s);
+    renderSignals(s);renderTrades(s);renderEquity(s);
+    const p=s.portfolio;
+    $("halt-btn").textContent=p.halted?"Resume":"Halt";
+  }catch(e){
+    $("ctl-status").textContent="backend offline: "+e.message;
+  }
+}
+
+async function addSymbol(){
+  const v=$("wl-input").value.trim().toUpperCase();
+  if(!v)return;
+  await api("/api/watchlist",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({symbol:v})});
+  $("wl-input").value="";refresh();
+}
+async function delSymbol(sym){
+  await api("/api/watchlist/"+sym,{method:"DELETE"});refresh();
+}
+async function scanNow(){
+  $("ctl-status").textContent="scanning…";
+  const r=await api("/api/control",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({action:"scan"})});
+  $("ctl-status").textContent=`scanned ${r.stats.scanned} symbols, took ${r.stats.taken}`;
+  refresh();
+}
+async function squareOff(){
+  const r=await api("/api/control",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({action:"squareoff"})});
+  $("ctl-status").textContent=`closed ${r.closed} positions`;
+  refresh();
+}
+async function toggleHalt(){
+  const r=await api("/api/control",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({action:"halt"})});
+  $("ctl-status").textContent=r.halted?"HALTED — no fresh entries":"resumed";
+  refresh();
+}
+$("wl-input").addEventListener("keydown",e=>{if(e.key==="Enter")addSymbol()});
+refresh();
+setInterval(refresh,4000);
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "NIFTY 50",
+  "updated": "2025-06",
+  "note": "NSE refreshes constituents twice a year. Update this list each January/July from nseindia.com. The bot also accepts watchlist symbols added via the UI at runtime.",
+  "symbols": [
+    "ADANIENT", "ADANIPORTS", "APOLLOHOSP", "ASIANPAINT", "AXISBANK",
+    "BAJAJ-AUTO", "BAJFINANCE", "BAJAJFINSV", "BEL", "BHARTIARTL",
+    "CIPLA", "COALINDIA", "DIVISLAB", "DRREDDY", "EICHERMOT",
+    "GRASIM", "HCLTECH", "HDFCBANK", "HDFCLIFE", "HEROMOTOCO",
+    "HINDALCO", "HINDUNILVR", "ICICIBANK", "INDUSINDBK", "INFY",
+    "ITC", "JSWSTEEL", "KOTAKBANK", "LT", "M&M",
+    "MARUTI", "NESTLEIND", "NTPC", "ONGC", "POWERGRID",
+    "RELIANCE", "SBILIFE", "SBIN", "SUNPHARMA", "TATACONSUM",
+    "TATAMOTORS", "TATASTEEL", "TCS", "TECHM", "TITAN",
+    "TRENT", "ULTRACEMCO", "WIPRO", "SHRIRAMFIN", "JIOFIN"
+  ]
+}

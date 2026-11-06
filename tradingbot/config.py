@@ -14,7 +14,16 @@ from typing import Dict, List
 from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-load_dotenv(PROJECT_ROOT / ".env")
+
+_ENV_FILE = PROJECT_ROOT / ".env"
+_ENV_TEMPLATE = PROJECT_ROOT / ".env.example"
+if not _ENV_FILE.exists() and _ENV_TEMPLATE.exists():
+    # First run on a fresh clone: seed .env from the template so the desk
+    # boots with documented defaults instead of failing on a missing file.
+    _ENV_FILE.write_text(_ENV_TEMPLATE.read_text(encoding="utf-8"), encoding="utf-8")
+    print("[config] no .env found — created one from .env.example. "
+          "Edit it to add your Dhan / Telegram credentials.")
+load_dotenv(_ENV_FILE)
 
 
 def _env(key: str, default: str) -> str:
